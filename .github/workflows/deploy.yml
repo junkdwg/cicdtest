@@ -1,0 +1,29 @@
+name: Deploy Web App
+on:
+  push:
+    branches: [ "main" ] # ทำงานเมื่อมีการ Push เข้า Branch main
+
+jobs:
+  deploy:
+    runs-on: self-hosted # วิ่งไปรันที่ Runner ใน VirtualBox ของคุณ
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Build and Run Container
+        run: |
+          # 1. ลบคอนเทนเนอร์เก่า (ถ้ามี)
+          docker stop my-web-app || true
+          docker rm my-web-app || true
+          
+          # 2. Build Image ใหม่
+          docker build -t my-web-app:latest .
+          
+          # 3. รันคอนเทนเนอร์ใหม่พร้อมเชื่อมต่อกับ Traefik
+          docker run -d \
+            --name my-web-app \
+            --network web-network \
+            --label "traefik.enable=true" \
+            --label "traefik.http.routers.my-app.rule=Host(\`app1.local.test\`)" \
+            --label "traefik.http.services.my-app.loadbalancer.server.port=80" \
+            my-web-app:latest
